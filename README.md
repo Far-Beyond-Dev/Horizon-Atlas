@@ -58,15 +58,8 @@ Horizon Atlas requires a configuration file to set up its parameters. Below is a
 
 ```toml
 [server]
-host = "0.0.0.0"
+address = "0.0.0.0"
 port = 3000
-
-[logging]
-level = "info"
-
-[instances]
-instance_1 = "192.168.1.2:9000"
-instance_2 = "192.168.1.3:9000"
 ```
 
 -   server: The host and port where Horizon Atlas will run.
