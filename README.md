@@ -1,4 +1,4 @@
-![logo-no-background](branding\logo-no-background.png)
+![logo-no-background](branding/logo-no-background.png)
 
 # Horizon Atlas
 
