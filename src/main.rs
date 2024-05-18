@@ -1,10 +1,7 @@
 use serde_json::{json, Value}; // Import json macro and Value from serde_json
-use socketioxide::{
-    extract::{AckSender, Bin, Data, SocketRef},
-    SocketIo,
-};
+use socketioxide::extract::{AckSender, Bin, Data, SocketRef};
 use std::sync::{Arc, Mutex};
-use tracing::{debug, error, event, info, Level};
+use tracing::{debug, error, info, Level};
 use tracing_subscriber::FmtSubscriber;
 use std::io::Write; // Bring the Write trait into scope
 use viz::{handler::ServiceHandler, serve, Result, Router};
@@ -65,6 +62,14 @@ fn on_connect(socket: SocketRef, Data(data): Data<Value>, players: Arc<Mutex<Vec
         },
     );
 
+
+    socket.on(
+        "data",
+        |Data::<Value>(data)| {
+            info!("{}", data);
+        },
+    );
+
     // Register the event handler to send online players array to the client
     socket.on(
         "getOnlinePlayers",
@@ -115,14 +120,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("+--------------------------------------------------------------------------------------------------------------------------------+");
     println!("|    __    __                         __                                          ______      __       __                        |");
-    println!("|   |  |  |  |                       |  |                                        /      |    |  |     |  |                       |");
-    println!("|   | $$  | $$   ______     ______    |$$  ________    ______    _______        |  $$$$$$|  _| $$_    | $$   ______     _______  |");
+    println!("|   |  |  |  |                       |$$|                                        /      |    |  |     | $$                       |");
+    println!("|   | $$  | $$   ______     ______    __   ________    ______    _______        |  $$$$$$|  _| $$_    | $$   ______     _______  |");
     println!("|   | $$__| $$  /      |   /      |  |  | |        |  /      |  |       |       | $$__| $$ |   $$ |   | $$  |      |   /       | |");
     println!("|   | $$    $$ |  $$$$$$| |  $$$$$$| | $$  |$$$$$$$$ |  $$$$$$| | $$$$$$$|      | $$    $$  |$$$$$$   | $$   |$$$$$$| |  $$$$$$$ |");
     println!("|   | $$$$$$$$ | $$  | $$ | $$   |$$ | $$   /    $$  | $$  | $$ | $$  | $$      | $$$$$$$$   | $$ __  | $$  /      $$  |$$    |  |");
     println!("|   | $$  | $$ | $$__/ $$ | $$       | $$  /  $$$$_  | $$__/ $$ | $$  | $$      | $$  | $$   | $$|  | | $$ |  $$$$$$$  _|$$$$$$| |");
     println!("|   | $$  | $$  |$$    $$ | $$       | $$ |  $$    |  |$$    $$ | $$  | $$      | $$  | $$    |$$  $$ | $$  |$$    $$ |       $$ |");
-    println!("|    |$$   |$$   |$$$$$$   |$$        |$$  |$$$$$$$$   |$$$$$$   |$$   |$$       |$$   |$$     |$$$$   |$$   |$$$$$$$  |$$$$$$$  |");
+    println!("|   | $$  | $$   |$$$$$$  | $$       | $$  $$$$$$$$    |$$$$$$  | $$  | $$      | $$  | $$     |$$$$  | $$   |$$$$$$$  |$$$$$$$  |");
     println!("|                                                                                                                                |");
     println!("+--------------------------------------------------------------------------------------------------------------------------------+");
                                                                                                                 
