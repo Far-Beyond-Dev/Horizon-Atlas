@@ -1,14 +1,3 @@
 [server]
-host = "0.0.0.0"
+address = "0.0.0.0"
 port = 3000
-
-[database]
-type = "PostgreSQL"
-connection_string = "postgres://user:password@localhost/horizon"
-
-[logging]
-level = "info"
-
-[instances]
-instance_1 = "192.168.1.2:9000"
-instance_2 = "192.168.1.3:9000"
