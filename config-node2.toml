@@ -4,7 +4,7 @@ port = 3000
 max_connections = 10000
 
 [cluster]
-node_id = "atlas-node-1"
+node_id = "atlas-node-2"
 discovery_interval = 30
 health_check_interval = 10
 

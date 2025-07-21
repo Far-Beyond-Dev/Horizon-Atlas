@@ -8,12 +8,39 @@
 # database or a cache. For examples, see the Awesome Compose repository:
 # https://github.com/docker/awesome-compose
 services:
-  server:
+  atlas-1:
     build:
       context: .
       target: final
     ports:
-      - 3000:3000
+      - "3000:3000"
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - ./config.toml:/bin/config.toml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+  
+  atlas-2:
+    build:
+      context: .
+      target: final
+    ports:
+      - "3001:3000"
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - ./config-node2.toml:/bin/config.toml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
 
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to

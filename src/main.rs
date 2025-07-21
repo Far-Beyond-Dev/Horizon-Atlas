@@ -1,10 +1,41 @@
-//! Horizon Atlas
-//! 
-//! Horizon Atlas is a connection orchestrator for Horizon Game Server instances.
-//! It manages the lifecycle of game servers, including starting, stopping, and monitoring them
-//! as players move in the game world.
-//! 
-//! Horizon Atlas is designed to be used as a websoctet proxy and connection manager, As a player approaches a region,
-//! the server will prepare the game server for that region if it is not already running, it will also as they get closer preemptively
-//! serialize player state and begin syncing it via delta compression to the new game server they are approaching.
+mod config;
+mod server;
+mod proxy;
+mod cluster;
+mod encryption;
+mod compression;
+mod game_server;
+mod regions;
+mod state;
 
+use anyhow::Result;
+use config::Config;
+use server::AtlasServer;
+use tracing::{info, error};
+use tracing_subscriber::EnvFilter;
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    init_logging()?;
+    
+    let config = Config::load("config.toml").await?;
+    info!("Loaded configuration for node: {}", config.cluster.node_id);
+    
+    let server = AtlasServer::new(config).await?;
+    
+    info!("Starting Horizon Atlas server...");
+    if let Err(e) = server.start().await {
+        error!("Server error: {}", e);
+        return Err(e);
+    }
+    
+    Ok(())
+}
+
+fn init_logging() -> Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_target(false)
+        .init();
+    Ok(())
+}
