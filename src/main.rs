@@ -5,7 +5,7 @@ mod cluster;
 mod encryption;
 mod compression;
 mod game_server;
-mod regions;
+mod server_manager;
 mod state;
 
 use anyhow::Result;

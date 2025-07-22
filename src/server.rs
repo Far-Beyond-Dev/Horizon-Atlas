@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::proxy::WebSocketProxy;
 use crate::game_server::GameServerManager;
-use crate::regions::RegionManager;
+use crate::server_manager::ServerManager;
 use crate::cluster::ClusterManager;
 use crate::encryption::EncryptionManager;
 use crate::compression::DeltaCompressor;
@@ -24,7 +24,7 @@ pub struct AtlasServer {
     config: Config,
     proxy: Arc<WebSocketProxy>,
     game_server_manager: Arc<GameServerManager>,
-    region_manager: Arc<RegionManager>,
+    server_manager: Arc<ServerManager>,
     cluster_manager: Arc<ClusterManager>,
 }
 
@@ -44,9 +44,9 @@ impl AtlasServer {
         
         let game_server_manager = Arc::new(GameServerManager::new(config.game_servers.clone()));
         
-        let region_manager = Arc::new(RegionManager::new(
-            config.regions.preload_distance,
-            config.regions.transfer_distance,
+        let server_manager = Arc::new(ServerManager::new(
+            config.spatial.preload_distance,
+            config.spatial.transfer_distance,
         ));
         
         let cluster_manager = Arc::new(ClusterManager::new(
@@ -57,7 +57,7 @@ impl AtlasServer {
         
         let proxy = Arc::new(WebSocketProxy::new(
             Arc::clone(&game_server_manager),
-            Arc::clone(&region_manager),
+            Arc::clone(&server_manager),
             Arc::clone(&encryption_manager),
             Arc::clone(&compressor),
         ));
@@ -68,7 +68,7 @@ impl AtlasServer {
             config,
             proxy,
             game_server_manager,
-            region_manager,
+            server_manager,
             cluster_manager,
         })
     }
@@ -104,15 +104,15 @@ impl AtlasServer {
         let app_state = AppState {
             proxy: Arc::clone(&self.proxy),
             game_server_manager: Arc::clone(&self.game_server_manager),
-            region_manager: Arc::clone(&self.region_manager),
+            server_manager: Arc::clone(&self.server_manager),
         };
         
         Router::new()
-            .route("/ws", get(websocket_handler))
+            .route("/", get(websocket_handler))
             .route("/health", get(health_check))
             .route("/metrics", get(metrics_handler))
             .route("/servers", get(servers_handler))
-            .route("/regions", get(regions_handler))
+            .route("/server-bounds", get(server_bounds_handler))
             .with_state(app_state)
             .layer(
                 ServiceBuilder::new()
@@ -125,7 +125,7 @@ impl AtlasServer {
 struct AppState {
     proxy: Arc<WebSocketProxy>,
     game_server_manager: Arc<GameServerManager>,
-    region_manager: Arc<RegionManager>,
+    server_manager: Arc<ServerManager>,
 }
 
 async fn websocket_handler(
@@ -175,8 +175,8 @@ async fn servers_handler(State(state): State<AppState>) -> Result<String, String
         .map_err(|e| format!("Serialization error: {}", e))
 }
 
-async fn regions_handler(State(state): State<AppState>) -> Result<String, String> {
-    let regions = state.region_manager.get_all_regions().await;
-    serde_json::to_string_pretty(&regions)
+async fn server_bounds_handler(State(state): State<AppState>) -> Result<String, String> {
+    let servers = state.server_manager.get_all_servers().await;
+    serde_json::to_string_pretty(&servers)
         .map_err(|e| format!("Serialization error: {}", e))
 }

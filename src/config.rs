@@ -1,6 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use tracing::{info, error, debug};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -8,7 +9,7 @@ pub struct Config {
     pub cluster: ClusterConfig,
     pub security: SecurityConfig,
     pub game_servers: GameServerConfig,
-    pub regions: RegionConfig,
+    pub spatial: SpatialConfig,  // Renamed from regions
     pub compression: CompressionConfig,
     pub logging: LoggingConfig,
 }
@@ -41,7 +42,7 @@ pub struct GameServerConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegionConfig {
+pub struct SpatialConfig {
     pub preload_distance: f64,
     pub transfer_distance: f64,
     pub sync_interval: u64,
@@ -62,8 +63,39 @@ pub struct LoggingConfig {
 
 impl Config {
     pub async fn load(path: &str) -> Result<Self> {
-        let contents = fs::read_to_string(path)?;
-        let config: Config = toml::from_str(&contents)?;
+        info!("Loading configuration from: {}", path);
+        
+        let contents = fs::read_to_string(path)
+            .map_err(|e| {
+                error!("Failed to read config file '{}': {}", path, e);
+                e
+            })?;
+            
+        debug!("Configuration file size: {} bytes", contents.len());
+        
+        let config: Config = toml::from_str(&contents)
+            .map_err(|e| {
+                error!("Failed to parse configuration: {}", e);
+                e
+            })?;
+            
+        // Log configuration summary (without sensitive data)
+        info!(
+            "Configuration loaded successfully - Node: {}, Server: {}:{}, Encryption: {}, Compression: {}",
+            config.cluster.node_id,
+            config.server.address,
+            config.server.port,
+            config.security.enable_encryption,
+            config.compression.enable
+        );
+        
+        debug!(
+            "Config details - Max connections: {}, Preload distance: {}, Transfer distance: {}",
+            config.server.max_connections,
+            config.spatial.preload_distance,
+            config.spatial.transfer_distance
+        );
+        
         Ok(config)
     }
 }

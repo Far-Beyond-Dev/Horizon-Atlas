@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(rm:*)",
+      "Bash(cargo run:*)",
+      "Bash(timeout 5s cargo run --bin Horizon-Atlas)",
+      "Bash(timeout 3s cargo run --bin Horizon-Atlas)"
     ],
     "deny": []
   }

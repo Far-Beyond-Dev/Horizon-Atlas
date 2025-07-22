@@ -7,7 +7,7 @@ pub struct PlayerState {
     pub id: Uuid,
     pub position: Vector3,
     pub velocity: Vector3,
-    pub region_id: String,
+    pub server_id: Uuid,  // Player is on a server, not a separate region concept
     pub last_update: u64,
     pub data: PlayerData,
 }
@@ -29,20 +29,19 @@ pub struct PlayerData {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameServerInfo {
-    pub id: String,
+    pub id: Uuid,
     pub address: String,
     pub port: u16,
-    pub region_bounds: RegionBounds,
+    pub bounds: ServerBounds,  // Direct server spatial bounds
     pub status: ServerStatus,
     pub player_count: usize,
     pub last_heartbeat: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegionBounds {
+pub struct ServerBounds {
     pub min: Vector3,
     pub max: Vector3,
-    pub region_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,8 +57,8 @@ pub enum ServerStatus {
 pub struct ConnectionInfo {
     pub client_id: Uuid,
     pub player_id: Option<Uuid>,
-    pub current_server: Option<String>,
-    pub target_server: Option<String>,
+    pub current_server: Option<Uuid>,  // Server IDs are now UUIDs
+    pub target_server: Option<Uuid>,   // Server IDs are now UUIDs
     pub connection_time: u64,
 }
 
@@ -76,7 +75,7 @@ impl Vector3 {
     }
 }
 
-impl RegionBounds {
+impl ServerBounds {
     pub fn contains(&self, position: &Vector3) -> bool {
         position.x >= self.min.x && position.x <= self.max.x &&
         position.y >= self.min.y && position.y <= self.max.y &&

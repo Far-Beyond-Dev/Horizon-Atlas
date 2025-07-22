@@ -17,7 +17,7 @@ startup_timeout = 30
 shutdown_timeout = 15
 max_idle_time = 300
 
-[regions]
+[spatial]
 preload_distance = 1000.0
 transfer_distance = 500.0
 sync_interval = 1
