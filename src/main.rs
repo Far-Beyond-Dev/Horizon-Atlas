@@ -1,41 +1,43 @@
 mod config;
 mod server;
 mod proxy;
+mod routing;
+mod crypto;
+mod discovery;
 mod cluster;
-mod encryption;
-mod compression;
-mod game_server;
-mod server_manager;
-mod state;
+mod health;
+mod metrics;
+mod transitions;
+mod errors;
+mod types;
 
 use anyhow::Result;
 use config::Config;
 use server::AtlasServer;
 use tracing::{info, error};
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    init_logging()?;
-    
-    let config = Config::load("config.toml").await?;
-    info!("Loaded configuration for node: {}", config.cluster.node_id);
-    
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    info!("Starting Horizon Atlas...");
+
+    let config = Config::load()?;
+    info!("Configuration loaded successfully");
+
     let server = AtlasServer::new(config).await?;
-    
-    info!("Starting Horizon Atlas server...");
-    if let Err(e) = server.start().await {
-        error!("Server error: {}", e);
+    info!("Atlas server initialized");
+
+    if let Err(e) = server.run().await {
+        error!("Atlas server error: {}", e);
         return Err(e);
     }
-    
-    Ok(())
-}
 
-fn init_logging() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_target(false)
-        .init();
     Ok(())
 }
