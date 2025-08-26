@@ -60,7 +60,11 @@ fn handle_client(mut client: TcpStream, target_addr: SocketAddr) {
         let mut buf = [0u8; 4096];
         loop {
             match server_for_client.read(&mut buf) {
-                Ok(0) => break,
+                Ok(0) => {
+                    // Server disconnected, shutdown client socket
+                    let _ = client_for_server.shutdown(std::net::Shutdown::Both);
+                    break;
+                },
                 Ok(n) => {
                     if client_for_server.write_all(&buf[..n]).is_err() {
                         break;
