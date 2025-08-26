@@ -131,11 +131,11 @@ impl RoutingManager {
             session.current_region = Some(region_id.clone());
             
             if self.config.session_affinity {
-                if let Some(sticky_server) = &session.sticky_server {
-                    if self.is_server_healthy(sticky_server).await? {
+                if let Some(sticky_server) = session.sticky_server.clone() {
+                    if self.is_server_healthy(&sticky_server).await? {
                         debug!("Using sticky server {} for client {}", sticky_server, client_id.0);
                         session.current_server = Some(sticky_server.clone());
-                        return Ok(sticky_server.clone());
+                        return Ok(sticky_server);
                     } else {
                         session.sticky_server = None;
                     }
