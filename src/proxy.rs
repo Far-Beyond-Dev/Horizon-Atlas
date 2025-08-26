@@ -395,7 +395,7 @@ async fn handle_client_connection(
     let crypto_manager_clone = Arc::clone(&crypto_manager);
     let metrics_clone = metrics.clone();
     
-    let outgoing_task = tokio::spawn(async move {
+    let mut outgoing_task = tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
             if let Err(e) = ws_sink.send(msg).await {
                 error!("Failed to send message to client {}: {}", client_id_clone.0, e);
@@ -438,7 +438,7 @@ async fn handle_client_connection(
                     }
                 }
             }
-            _ = outgoing_task => {
+            _ = &mut outgoing_task => {
                 debug!("Outgoing task completed for client {}", client_id.0);
                 break;
             }
