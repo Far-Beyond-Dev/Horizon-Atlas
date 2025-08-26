@@ -502,7 +502,7 @@ impl HealthMonitor {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ClusterHealthSummary {
     pub total_servers: u32,
     pub healthy_servers: u32,

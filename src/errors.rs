@@ -75,10 +75,6 @@ impl From<prometheus::Error> for AtlasError {
     }
 }
 
-impl From<AtlasError> for anyhow::Error {
-    fn from(err: AtlasError) -> Self {
-        anyhow::Error::new(err)
-    }
-}
+// Removed conflicting From implementation - anyhow already provides this
 
 pub type Result<T> = std::result::Result<T, AtlasError>;

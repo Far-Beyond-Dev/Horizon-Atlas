@@ -34,8 +34,10 @@ async fn main() -> Result<()> {
     let server = AtlasServer::new(config).await?;
     info!("Atlas server initialized");
 
-    server.run().await.map_err(|e| {
+    if let Err(e) = server.run().await {
         error!("Atlas server error: {}", e);
-        anyhow::Error::from(e)
-    })
+        return Err(anyhow::anyhow!("{}", e));
+    }
+
+    Ok(())
 }

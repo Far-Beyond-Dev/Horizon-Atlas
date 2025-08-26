@@ -660,7 +660,7 @@ impl ClusterManager {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClusterStatus {
     pub node_id: String,
     pub role: NodeRole,

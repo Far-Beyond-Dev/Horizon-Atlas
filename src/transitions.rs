@@ -515,7 +515,7 @@ impl Clone for TransitionMetrics {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransitionMetricsSnapshot {
     pub transitions_initiated: u32,
     pub transitions_completed: u32,

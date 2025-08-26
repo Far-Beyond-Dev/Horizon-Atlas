@@ -336,7 +336,7 @@ impl Clone for ProxyMetrics {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProxyMetricsSnapshot {
     pub active_client_connections: u32,
     pub active_server_connections: u32,

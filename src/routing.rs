@@ -439,7 +439,7 @@ impl RoutingManager {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoutingMetricsSnapshot {
     pub routes_calculated: u64,
     pub cache_hits: u64,
