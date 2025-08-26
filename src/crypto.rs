@@ -33,8 +33,8 @@ struct EncryptionKey {
 impl EncryptionKey {
     fn new(id: u32, key: Vec<u8>, cipher_suite: &CipherSuite, ttl: Duration) -> Self {
         let algorithm = match cipher_suite {
-            CipherSuite::ChaCha20Poly1305 => &aead::CHACHA20_POLY1305,
-            CipherSuite::Aes256Gcm => &aead::AES_256_GCM,
+            CipherSuite::ChaCha20Poly1305 => aead::CHACHA20_POLY1305,
+            CipherSuite::Aes256Gcm => aead::AES_256_GCM,
         };
         
         let now = SystemTime::now();
@@ -42,7 +42,7 @@ impl EncryptionKey {
         Self {
             id,
             key,
-            algorithm: *algorithm,
+            algorithm,
             created_at: now,
             expires_at: now + ttl,
         }
@@ -423,8 +423,8 @@ impl SessionCrypto {
         };
         
         let algorithm = match cipher_suite {
-            CipherSuite::ChaCha20Poly1305 => &aead::CHACHA20_POLY1305,
-            CipherSuite::Aes256Gcm => &aead::AES_256_GCM,
+            CipherSuite::ChaCha20Poly1305 => aead::CHACHA20_POLY1305,
+            CipherSuite::Aes256Gcm => aead::AES_256_GCM,
         };
         
         let mut key = vec![0u8; key_len];
@@ -433,7 +433,7 @@ impl SessionCrypto {
         
         let session_key = SessionKey {
             key,
-            algorithm: *algorithm,
+            algorithm,
             created_at: SystemTime::now(),
             last_used: SystemTime::now(),
         };

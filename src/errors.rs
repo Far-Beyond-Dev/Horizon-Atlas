@@ -69,4 +69,16 @@ impl From<reqwest::Error> for AtlasError {
     }
 }
 
+impl From<prometheus::Error> for AtlasError {
+    fn from(err: prometheus::Error) -> Self {
+        AtlasError::Internal(format!("Prometheus error: {}", err))
+    }
+}
+
+impl From<AtlasError> for anyhow::Error {
+    fn from(err: AtlasError) -> Self {
+        anyhow::Error::new(err)
+    }
+}
+
 pub type Result<T> = std::result::Result<T, AtlasError>;

@@ -183,8 +183,9 @@ async fn update_server_cache(
 
 async fn create_discovery_backend(config: &DiscoveryConfig) -> Result<Arc<dyn ServiceDiscovery>> {
     match &config.backend {
-        DiscoveryBackend::Etcd { endpoints } => {
-            Ok(Arc::new(EtcdDiscovery::new(endpoints.clone(), config.clone()).await?))
+        DiscoveryBackend::Etcd { .. } => {
+            warn!("Etcd backend not available in this build - falling back to static discovery");
+            Ok(Arc::new(StaticDiscovery::new(vec![])))
         }
         DiscoveryBackend::Consul { endpoint } => {
             Ok(Arc::new(ConsulDiscovery::new(endpoint.clone(), config.clone()).await?))
@@ -195,106 +196,8 @@ async fn create_discovery_backend(config: &DiscoveryConfig) -> Result<Arc<dyn Se
     }
 }
 
-pub struct EtcdDiscovery {
-    client: etcd_rs::Client,
-    config: DiscoveryConfig,
-    key_prefix: String,
-}
-
-impl EtcdDiscovery {
-    pub async fn new(endpoints: Vec<String>, config: DiscoveryConfig) -> Result<Self> {
-        let client = etcd_rs::Client::connect(endpoints, None).await
-            .map_err(|e| AtlasError::Discovery(format!("Failed to connect to etcd: {}", e)))?;
-        
-        let key_prefix = format!("/horizon/atlas/{}", config.service_name);
-        
-        Ok(Self {
-            client,
-            config,
-            key_prefix,
-        })
-    }
-    
-    fn server_key(&self, server_id: &ServerId) -> String {
-        format!("{}/servers/{}", self.key_prefix, server_id.0)
-    }
-}
-
-#[async_trait]
-impl ServiceDiscovery for EtcdDiscovery {
-    async fn register_server(&self, server: &GameServer) -> Result<()> {
-        let key = self.server_key(&server.id);
-        let value = serde_json::to_string(server)
-            .map_err(|e| AtlasError::Discovery(format!("Serialization error: {}", e)))?;
-        
-        let lease = self.client.lease_grant(self.config.service_ttl as i64 / 1000, None).await
-            .map_err(|e| AtlasError::Discovery(format!("Failed to create lease: {}", e)))?;
-        
-        self.client.kv().put(etcd_rs::PutRequest::new(key, value).with_lease(lease.id())).await
-            .map_err(|e| AtlasError::Discovery(format!("Failed to register server: {}", e)))?;
-        
-        Ok(())
-    }
-    
-    async fn deregister_server(&self, server_id: &ServerId) -> Result<()> {
-        let key = self.server_key(server_id);
-        self.client.kv().delete(etcd_rs::DeleteRequest::new(key)).await
-            .map_err(|e| AtlasError::Discovery(format!("Failed to deregister server: {}", e)))?;
-        
-        Ok(())
-    }
-    
-    async fn discover_servers(&self) -> Result<Vec<GameServer>> {
-        let prefix = format!("{}/servers/", self.key_prefix);
-        let resp = self.client.kv().range(etcd_rs::RangeRequest::new(etcd_rs::KeyRange::prefix(prefix))).await
-            .map_err(|e| AtlasError::Discovery(format!("Failed to discover servers: {}", e)))?;
-        
-        let mut servers = Vec::new();
-        for kv in resp.kvs() {
-            match serde_json::from_slice::<GameServer>(kv.value()) {
-                Ok(server) => servers.push(server),
-                Err(e) => warn!("Failed to deserialize server: {}", e),
-            }
-        }
-        
-        Ok(servers)
-    }
-    
-    async fn get_server(&self, server_id: &ServerId) -> Result<Option<GameServer>> {
-        let key = self.server_key(server_id);
-        let resp = self.client.kv().range(etcd_rs::RangeRequest::new(etcd_rs::KeyRange::key(key))).await
-            .map_err(|e| AtlasError::Discovery(format!("Failed to get server: {}", e)))?;
-        
-        if let Some(kv) = resp.kvs().first() {
-            let server: GameServer = serde_json::from_slice(kv.value())
-                .map_err(|e| AtlasError::Discovery(format!("Deserialization error: {}", e)))?;
-            Ok(Some(server))
-        } else {
-            Ok(None)
-        }
-    }
-    
-    async fn get_servers_by_region(&self, region_id: &RegionId) -> Result<Vec<GameServer>> {
-        let servers = self.discover_servers().await?;
-        Ok(servers.into_iter()
-            .filter(|s| s.regions.contains(region_id))
-            .collect())
-    }
-    
-    async fn update_server_status(&self, server_id: &ServerId, status: ServerStatus) -> Result<()> {
-        if let Some(mut server) = self.get_server(server_id).await? {
-            server.status = status;
-            self.register_server(&server).await?;
-        }
-        Ok(())
-    }
-    
-    async fn health_check(&self) -> Result<bool> {
-        let resp = self.client.cluster().member_list().await
-            .map_err(|e| AtlasError::Discovery(format!("Health check failed: {}", e)))?;
-        Ok(!resp.members().is_empty())
-    }
-}
+// EtcdDiscovery implementation removed - requires protobuf compiler
+// Uncomment and implement when protobuf is available
 
 pub struct ConsulDiscovery {
     client: reqwest::Client,

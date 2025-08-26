@@ -70,7 +70,7 @@ pub enum TransitionType {
     Emergency,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransitionContext {
     pub transition_id: String,
     pub transition_type: TransitionType,
@@ -418,11 +418,29 @@ impl TransitionManager {
                         
                         Some(Ok(()))
                     }
-                    Ok(Err(e)) | Err(_) => {
-                        let error_msg = match execute_result {
-                            Ok(Err(e)) => e.to_string(),
-                            Err(_) => "Execution timeout".to_string(),
-                        };
+                    Ok(Err(e)) => {
+                        let error_msg = e.to_string();
+                        
+                        transition.state = TransitionState::Failed;
+                        transition.error_message = Some(error_msg.clone());
+                        transition.updated_at = Utc::now();
+                        
+                        if let Some(ctx) = &transition.context {
+                            if let Err(rollback_err) = handler.rollback_transition(ctx, error_msg.clone()).await {
+                                error!("Failed to rollback transition {}: {}", transition_id, rollback_err);
+                            } else {
+                                transition.state = TransitionState::RolledBack;
+                                metrics.transitions_rolled_back.fetch_add(1, Ordering::SeqCst);
+                            }
+                        }
+                        
+                        metrics.transitions_failed.fetch_add(1, Ordering::SeqCst);
+                        error!("Failed transition {}: {}", transition_id, error_msg);
+                        
+                        Some(Err(AtlasError::Transition(error_msg)))
+                    }
+                    Err(_) => {
+                        let error_msg = "Execution timeout".to_string();
                         
                         transition.state = TransitionState::Failed;
                         transition.error_message = Some(error_msg.clone());
@@ -444,11 +462,20 @@ impl TransitionManager {
                     }
                 }
             }
-            Ok(Err(e)) | Err(_) => {
-                let error_msg = match prepare_result {
-                    Ok(Err(e)) => e.to_string(),
-                    Err(_) => "Preparation timeout".to_string(),
-                };
+            Ok(Err(e)) => {
+                let error_msg = e.to_string();
+                
+                transition.state = TransitionState::Failed;
+                transition.error_message = Some(error_msg.clone());
+                transition.updated_at = Utc::now();
+                
+                metrics.transitions_failed.fetch_add(1, Ordering::SeqCst);
+                error!("Failed to prepare transition {}: {}", transition_id, error_msg);
+                
+                Some(Err(AtlasError::Transition(error_msg)))
+            }
+            Err(_) => {
+                let error_msg = "Preparation timeout".to_string();
                 
                 transition.state = TransitionState::Failed;
                 transition.error_message = Some(error_msg.clone());

@@ -1,4 +1,4 @@
-use crate::config::{MetricsConfig, MetricsExporter};
+use crate::config::MetricsConfig;
 use crate::errors::{AtlasError, Result};
 use crate::proxy::ProxyMetricsSnapshot;
 use crate::routing::RoutingMetricsSnapshot;
