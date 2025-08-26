@@ -1,17 +1,15 @@
 use crate::config::{DiscoveryConfig, DiscoveryBackend, StaticServer};
 use crate::errors::{AtlasError, Result};
-use crate::types::{GameServer, ServerId, RegionId, ServerStatus};
+use crate::types::{GameServer, ServerId, ServerStatus, Position};
 use async_trait::async_trait;
 use chrono::Utc;
 use dashmap::DashMap;
 use std::collections::HashMap;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
-use tokio::time::{interval, timeout};
+use tokio::time::interval;
 use tracing::{debug, error, info, warn};
-use uuid::Uuid;
 
 #[async_trait]
 pub trait ServiceDiscovery: Send + Sync {
@@ -19,7 +17,6 @@ pub trait ServiceDiscovery: Send + Sync {
     async fn deregister_server(&self, server_id: &ServerId) -> Result<()>;
     async fn discover_servers(&self) -> Result<Vec<GameServer>>;
     async fn get_server(&self, server_id: &ServerId) -> Result<Option<GameServer>>;
-    async fn get_servers_by_region(&self, region_id: &RegionId) -> Result<Vec<GameServer>>;
     async fn update_server_status(&self, server_id: &ServerId, status: ServerStatus) -> Result<()>;
     async fn health_check(&self) -> Result<bool>;
 }
@@ -28,7 +25,6 @@ pub struct DiscoveryManager {
     backend: Arc<dyn ServiceDiscovery>,
     config: DiscoveryConfig,
     server_cache: Arc<DashMap<ServerId, GameServer>>,
-    region_index: Arc<DashMap<RegionId, Vec<ServerId>>>,
     discovery_task: Option<tokio::task::JoinHandle<()>>,
 }
 
@@ -40,7 +36,6 @@ impl DiscoveryManager {
             backend,
             config,
             server_cache: Arc::new(DashMap::new()),
-            region_index: Arc::new(DashMap::new()),
             discovery_task: None,
         })
     }
@@ -50,7 +45,6 @@ impl DiscoveryManager {
         
         let backend = Arc::clone(&self.backend);
         let server_cache = Arc::clone(&self.server_cache);
-        let region_index = Arc::clone(&self.region_index);
         let interval_ms = self.config.discovery_interval;
         
         let task = tokio::spawn(async move {
@@ -62,7 +56,7 @@ impl DiscoveryManager {
                 match backend.discover_servers().await {
                     Ok(servers) => {
                         debug!("Discovered {} servers", servers.len());
-                        update_server_cache(&server_cache, &region_index, servers).await;
+                        update_server_cache(&server_cache, servers).await;
                     }
                     Err(e) => {
                         error!("Failed to discover servers: {}", e);
@@ -87,29 +81,12 @@ impl DiscoveryManager {
         
         self.server_cache.insert(server.id.clone(), server.clone());
         
-        for region_id in &server.regions {
-            self.region_index
-                .entry(region_id.clone())
-                .or_insert_with(Vec::new)
-                .push(server.id.clone());
-        }
-        
-        info!("Registered server {} with {} regions", server.id, server.regions.len());
+        info!("Registered server {} with gameworld bounds {:?}", server.id, server.gameworld_bounds);
         Ok(())
     }
     
     pub async fn deregister_server(&self, server_id: &ServerId) -> Result<()> {
-        if let Some((_, server)) = self.server_cache.remove(server_id) {
-            for region_id in &server.regions {
-                if let Some(mut servers) = self.region_index.get_mut(region_id) {
-                    servers.retain(|id| id != server_id);
-                    if servers.is_empty() {
-                        drop(servers);
-                        self.region_index.remove(region_id);
-                    }
-                }
-            }
-        }
+        self.server_cache.remove(server_id);
         
         self.backend.deregister_server(server_id).await?;
         info!("Deregistered server {}", server_id);
@@ -124,24 +101,14 @@ impl DiscoveryManager {
         self.backend.get_server(server_id).await
     }
     
-    pub async fn get_servers_by_region(&self, region_id: &RegionId) -> Result<Vec<GameServer>> {
-        let server_ids = self.region_index
-            .get(region_id)
-            .map(|ids| ids.clone())
-            .unwrap_or_default();
-        
-        let mut servers = Vec::new();
-        for server_id in server_ids {
-            if let Some(server) = self.server_cache.get(&server_id) {
-                servers.push(server.clone());
+    pub async fn get_server_for_position(&self, position: &Position) -> Result<Option<GameServer>> {
+        for server_entry in self.server_cache.iter() {
+            let server = server_entry.value();
+            if server.gameworld_bounds.contains(position) {
+                return Ok(Some(server.clone()));
             }
         }
-        
-        if servers.is_empty() {
-            return self.backend.get_servers_by_region(region_id).await;
-        }
-        
-        Ok(servers)
+        Ok(None)
     }
     
     pub async fn get_all_servers(&self) -> Vec<GameServer> {
@@ -163,21 +130,12 @@ impl DiscoveryManager {
 
 async fn update_server_cache(
     cache: &DashMap<ServerId, GameServer>,
-    region_index: &DashMap<RegionId, Vec<ServerId>>,
     servers: Vec<GameServer>,
 ) {
     cache.clear();
-    region_index.clear();
     
     for server in servers {
         cache.insert(server.id.clone(), server.clone());
-        
-        for region_id in &server.regions {
-            region_index
-                .entry(region_id.clone())
-                .or_insert_with(Vec::new)
-                .push(server.id.clone());
-        }
     }
 }
 
@@ -224,7 +182,7 @@ impl ServiceDiscovery for ConsulDiscovery {
             "Address": server.address.ip().to_string(),
             "Port": server.address.port(),
             "Meta": {
-                "regions": serde_json::to_string(&server.regions)?,
+                "gameworld_bounds": serde_json::to_string(&server.gameworld_bounds)?,
                 "status": serde_json::to_string(&server.status)?,
                 "load": server.load.to_string(),
                 "capacity": server.current_players.to_string(),
@@ -294,12 +252,6 @@ impl ServiceDiscovery for ConsulDiscovery {
         Ok(servers.into_iter().find(|s| s.id == *server_id))
     }
     
-    async fn get_servers_by_region(&self, region_id: &RegionId) -> Result<Vec<GameServer>> {
-        let servers = self.discover_servers().await?;
-        Ok(servers.into_iter()
-            .filter(|s| s.regions.contains(region_id))
-            .collect())
-    }
     
     async fn update_server_status(&self, server_id: &ServerId, status: ServerStatus) -> Result<()> {
         if let Some(server) = self.get_server(server_id).await? {
@@ -333,10 +285,16 @@ impl ConsulDiscovery {
         
         let meta = service.get("Meta").unwrap_or(&serde_json::Value::Null);
         
-        let regions: Vec<RegionId> = meta.get("regions")
+        use crate::types::RegionBounds;
+        
+        let gameworld_bounds: RegionBounds = meta.get("gameworld_bounds")
             .and_then(|v| v.as_str())
             .and_then(|s| serde_json::from_str(s).ok())
-            .unwrap_or_default();
+            .unwrap_or(RegionBounds {
+                min_x: 0.0, max_x: 1000.0,
+                min_y: 0.0, max_y: 1000.0, 
+                min_z: 0.0, max_z: 1000.0,
+            });
         
         let status: ServerStatus = meta.get("status")
             .and_then(|v| v.as_str())
@@ -362,7 +320,7 @@ impl ConsulDiscovery {
             id: ServerId::from_string(id.to_string()),
             address: format!("{}:{}", address, port).parse()
                 .map_err(|e| AtlasError::Discovery(format!("Invalid address: {}", e)))?,
-            regions,
+            gameworld_bounds,
             status,
             load,
             max_capacity,
@@ -383,7 +341,7 @@ impl StaticDiscovery {
             .map(|s| GameServer {
                 id: ServerId::from_string(s.id),
                 address: s.address,
-                regions: s.regions.into_iter().map(RegionId::new).collect(),
+                gameworld_bounds: s.gameworld_bounds,
                 status: ServerStatus::Ready,
                 load: 0.0,
                 max_capacity: 1000,
@@ -427,13 +385,6 @@ impl ServiceDiscovery for StaticDiscovery {
         Ok(servers.iter().find(|s| s.id == *server_id).cloned())
     }
     
-    async fn get_servers_by_region(&self, region_id: &RegionId) -> Result<Vec<GameServer>> {
-        let servers = self.servers.read().await;
-        Ok(servers.iter()
-            .filter(|s| s.regions.contains(region_id))
-            .cloned()
-            .collect())
-    }
     
     async fn update_server_status(&self, server_id: &ServerId, status: ServerStatus) -> Result<()> {
         let mut servers = self.servers.write().await;

@@ -46,7 +46,7 @@ pub struct AtlasMetrics {
     pub routes_calculated: Counter,
     pub routing_cache_hits: Counter,
     pub routing_cache_misses: Counter,
-    pub load_balancer_calls: Counter,
+    pub position_lookups: Counter,
     
     // Transition metrics
     pub transitions_initiated: Counter,
@@ -170,7 +170,7 @@ impl MetricsManager {
         self.metrics.routes_calculated.inc_by(routing_metrics.routes_calculated as f64);
         self.metrics.routing_cache_hits.inc_by(routing_metrics.cache_hits as f64);
         self.metrics.routing_cache_misses.inc_by(routing_metrics.cache_misses as f64);
-        self.metrics.load_balancer_calls.inc_by(routing_metrics.load_balancer_calls as f64);
+        self.metrics.position_lookups.inc_by(routing_metrics.position_lookups as f64);
     }
     
     pub fn record_transition_metrics(&self, transition_metrics: TransitionMetricsSnapshot) {
@@ -321,7 +321,7 @@ impl MetricsManager {
                         routes_calculated: 0,
                         cache_hits: 0,
                         cache_misses: 0,
-                        load_balancer_calls: 0,
+                        position_lookups: 0,
                         routing_errors: 0,
                         active_client_sessions: 0,
                         cached_routes: 0,
@@ -502,11 +502,11 @@ impl AtlasMetrics {
         )?;
         registry.register(Box::new(routing_cache_misses.clone()))?;
         
-        let load_balancer_calls = Counter::new(
-            "atlas_load_balancer_calls",
-            "Number of load balancer calls"
+        let position_lookups = Counter::new(
+            "atlas_position_lookups",
+            "Number of position-based server lookups"
         )?;
-        registry.register(Box::new(load_balancer_calls.clone()))?;
+        registry.register(Box::new(position_lookups.clone()))?;
         
         let transitions_initiated = Counter::new(
             "atlas_transitions_initiated",
@@ -644,7 +644,7 @@ impl AtlasMetrics {
             routes_calculated,
             routing_cache_hits,
             routing_cache_misses,
-            load_balancer_calls,
+            position_lookups,
             transitions_initiated,
             transitions_completed,
             transitions_failed,

@@ -90,7 +90,7 @@ pub enum DiscoveryBackend {
 pub struct StaticServer {
     pub id: String,
     pub address: SocketAddr,
-    pub regions: Vec<String>,
+    pub gameworld_bounds: RegionBounds,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
