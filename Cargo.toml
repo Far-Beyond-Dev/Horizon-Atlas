@@ -24,7 +24,7 @@ ring = "0.17.8"
 base64 = "0.22.1"
 tower = "0.5.0"
 tower-http = { version = "0.6.1", features = ["cors"] }
-etcd-rs = { version = "1.0.0-alpha.3" }
+# etcd-rs = { version = "1.0.0-alpha.3" }  # Requires protobuf compiler
 reqwest = { version = "0.12.4", features = ["json"] }
 hickory-resolver = "0.24.0"
 prometheus = { version = "0.13.4", features = ["process"] }
