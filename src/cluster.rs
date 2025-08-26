@@ -736,11 +736,15 @@ impl ConsensusEngine for RaftConsensus {
     }
     
     async fn propose(&self, proposal: ConsensusProposal) -> Result<ConsensusResult> {
-        let state = self.state.read();
-        if state.role != NodeRole::Leader {
+        let (is_leader, current_term) = {
+            let state = self.state.read();
+            (state.role == NodeRole::Leader, state.current_term)
+        };
+        
+        if !is_leader {
             return Ok(ConsensusResult {
                 accepted: false,
-                term: state.current_term,
+                term: current_term,
                 committed: false,
                 error: Some("Not leader".to_string()),
             });
@@ -748,7 +752,7 @@ impl ConsensusEngine for RaftConsensus {
         
         let mut log = self.log.lock().await;
         let log_entry = LogEntry {
-            term: state.current_term,
+            term: current_term,
             index: log.len() as u64,
             proposal,
             committed: false,
@@ -758,7 +762,7 @@ impl ConsensusEngine for RaftConsensus {
         
         Ok(ConsensusResult {
             accepted: true,
-            term: state.current_term,
+            term: current_term,
             committed: true,
             error: None,
         })

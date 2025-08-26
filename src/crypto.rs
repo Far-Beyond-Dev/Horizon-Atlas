@@ -25,7 +25,7 @@ pub struct CryptoManager {
 struct EncryptionKey {
     id: u32,
     key: Vec<u8>,
-    algorithm: aead::Algorithm,
+    algorithm: &'static aead::Algorithm,
     created_at: SystemTime,
     expires_at: SystemTime,
 }
@@ -42,7 +42,7 @@ impl EncryptionKey {
         Self {
             id,
             key,
-            algorithm: *algorithm,
+            algorithm,
             created_at: now,
             expires_at: now + ttl,
         }
@@ -153,7 +153,7 @@ impl CryptoManager {
         self.rng.fill(&mut nonce)
             .map_err(|_| AtlasError::Crypto("Failed to generate nonce".to_string()))?;
         
-        let unbound_key = aead::UnboundKey::new(&key.algorithm, &key.key)
+        let unbound_key = aead::UnboundKey::new(key.algorithm, &key.key)
             .map_err(|_| AtlasError::Crypto("Invalid encryption key".to_string()))?;
         let sealing_key = aead::LessSafeKey::new(unbound_key);
         
@@ -193,7 +193,7 @@ impl CryptoManager {
             return Err(AtlasError::Crypto("Key has expired".to_string()));
         }
         
-        let unbound_key = aead::UnboundKey::new(&key.algorithm, &key.key)
+        let unbound_key = aead::UnboundKey::new(key.algorithm, &key.key)
             .map_err(|_| AtlasError::Crypto("Invalid decryption key".to_string()))?;
         let opening_key = aead::LessSafeKey::new(unbound_key);
         
@@ -403,7 +403,7 @@ pub struct SessionCrypto {
 #[derive(Clone)]
 struct SessionKey {
     key: Vec<u8>,
-    algorithm: aead::Algorithm,
+    algorithm: &'static aead::Algorithm,
     created_at: SystemTime,
     last_used: SystemTime,
 }
@@ -455,7 +455,7 @@ impl SessionCrypto {
         self.rng.fill(&mut nonce)
             .map_err(|_| AtlasError::Crypto("Failed to generate nonce".to_string()))?;
         
-        let unbound_key = aead::UnboundKey::new(&key.algorithm, &key.key)
+        let unbound_key = aead::UnboundKey::new(key.algorithm, &key.key)
             .map_err(|_| AtlasError::Crypto("Invalid session key".to_string()))?;
         let sealing_key = aead::LessSafeKey::new(unbound_key);
         
@@ -488,7 +488,7 @@ impl SessionCrypto {
         
         let (nonce, ciphertext) = encrypted_data.split_at(NONCE_LEN);
         
-        let unbound_key = aead::UnboundKey::new(&key.algorithm, &key.key)
+        let unbound_key = aead::UnboundKey::new(key.algorithm, &key.key)
             .map_err(|_| AtlasError::Crypto("Invalid session key".to_string()))?;
         let opening_key = aead::LessSafeKey::new(unbound_key);
         

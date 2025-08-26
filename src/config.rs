@@ -100,6 +100,7 @@ pub struct ProxyConfig {
     pub connection_pool_size: u32,
     pub retry_attempts: u32,
     pub retry_delay: u64,
+    pub connection_timeout: u64,
     pub compression: CompressionConfig,
     pub rate_limiting: RateLimitConfig,
 }

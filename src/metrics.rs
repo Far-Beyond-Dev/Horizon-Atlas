@@ -1,4 +1,4 @@
-use crate::config::MetricsConfig;
+use crate::config::{MetricsConfig, MetricsExporter as MetricsExporterConfig};
 use crate::errors::{AtlasError, Result};
 use crate::proxy::ProxyMetricsSnapshot;
 use crate::routing::RoutingMetricsSnapshot;
@@ -259,13 +259,13 @@ impl MetricsManager {
         
         for exporter_config in &config.exporters {
             match exporter_config {
-                MetricsExporter::Prometheus { endpoint } => {
+                MetricsExporterConfig::Prometheus { endpoint } => {
                     exporters.push(Box::new(PrometheusExporter::new(endpoint.clone())));
                 }
-                MetricsExporter::InfluxDb { endpoint, database } => {
+                MetricsExporterConfig::InfluxDb { endpoint, database } => {
                     exporters.push(Box::new(InfluxDbExporter::new(endpoint.clone(), database.clone())));
                 }
-                MetricsExporter::DataDog { api_key } => {
+                MetricsExporterConfig::DataDog { api_key } => {
                     exporters.push(Box::new(DataDogExporter::new(api_key.clone())));
                 }
             }

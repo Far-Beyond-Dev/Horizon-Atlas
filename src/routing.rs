@@ -477,7 +477,7 @@ impl RoundRobinLoadBalancer {
 #[async_trait]
 impl LoadBalancer for RoundRobinLoadBalancer {
     async fn select_server(&self, region_id: &RegionId, _client_context: Option<&ClientConnection>) -> Result<ServerId> {
-        let servers = vec![];
+        let servers: Vec<ServerId> = vec![];
         if servers.is_empty() {
             return Err(AtlasError::ServerNotFound { server_id: "none".to_string() });
         }

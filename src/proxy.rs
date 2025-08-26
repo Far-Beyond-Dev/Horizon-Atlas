@@ -523,8 +523,7 @@ fn compress_if_needed(data: &[u8], config: &ProxyConfig) -> Result<Vec<u8>> {
     
     match config.compression.algorithm {
         crate::config::CompressionAlgorithm::Lz4 => {
-            lz4_flex::compress_prepend_size(data)
-                .map_err(|e| AtlasError::Internal(format!("Compression failed: {}", e)))
+            Ok(lz4_flex::compress_prepend_size(data))
         }
         _ => Ok(data.to_vec()),
     }
