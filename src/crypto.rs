@@ -42,7 +42,7 @@ impl EncryptionKey {
         Self {
             id,
             key,
-            algorithm,
+            algorithm: *algorithm,
             created_at: now,
             expires_at: now + ttl,
         }
