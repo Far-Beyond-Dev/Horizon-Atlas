@@ -296,7 +296,7 @@ impl ProxyManager {
                 client_connections.retain(|_, conn| {
                     if now.duration_since(conn.last_activity) > connection_timeout {
                         let _ = conn.sender.send(WsMessage::Close(Some(CloseFrame {
-                            code: tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode::Going,
+                            code: tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode::Away,
                             reason: "Connection timeout".into(),
                         })));
                         false
