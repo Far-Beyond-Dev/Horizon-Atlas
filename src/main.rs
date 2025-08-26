@@ -48,7 +48,18 @@ fn handle_client(mut client: TcpStream, target_addr: SocketAddr) {
             match client.read(&mut buf) {
                 Ok(0) => break,
                 Ok(n) => {
-                    if server.write_all(&buf[..n]).is_err() {
+                    // Skim buffer for JSON messages with client:move
+                    let data = &buf[..n];
+                    if let Ok(text) = std::str::from_utf8(data) {
+                        for part in text.split(|c| c == '\n' || c == '\r') {
+                            if part.contains("\"client\":\"move\"") {
+                                println!("client:move detected: {}", part);
+                            }
+                        }
+                    }
+
+                    // Immediate passthrough
+                    if server.write_all(data).is_err() {
                         break;
                     }
                 },
