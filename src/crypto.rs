@@ -433,7 +433,7 @@ impl SessionCrypto {
         
         let session_key = SessionKey {
             key,
-            algorithm,
+            algorithm: *algorithm,
             created_at: SystemTime::now(),
             last_used: SystemTime::now(),
         };
