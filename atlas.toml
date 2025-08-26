@@ -1,0 +1,277 @@
+# Horizon Atlas Configuration Example
+# This is a comprehensive configuration file for Atlas, the clustered service that sits
+# in front of game servers, providing WebSocket proxying, load balancing, and seamless
+# cross-server transitions.
+
+[server]
+# Address to bind the main Atlas server
+bind_address = "0.0.0.0:8080"
+
+# Maximum number of concurrent client connections
+max_connections = 10000
+
+# Connection timeout in milliseconds
+connection_timeout = 30000
+
+# Keepalive interval in milliseconds
+keepalive_interval = 30000
+
+# Maximum message size in bytes
+max_message_size = 1048576  # 1MB
+
+# Buffer size for connections
+buffer_size = 8192
+
+# Number of worker threads (optional, defaults to CPU cores)
+# worker_threads = 8
+
+[cluster]
+# Unique identifier for this Atlas node
+node_id = "atlas-node-1"
+
+# Name of the cluster this node belongs to
+cluster_name = "horizon-atlas"
+
+# List of seed nodes for cluster bootstrapping
+seed_nodes = [
+    "127.0.0.1:8081",
+    "127.0.0.1:8082",
+    "127.0.0.1:8083"
+]
+
+# Election timeout in milliseconds
+election_timeout = 5000
+
+# Heartbeat interval in milliseconds
+heartbeat_interval = 1000
+
+# Maximum retry attempts for cluster operations
+max_retry_attempts = 3
+
+# Consensus algorithm: "Raft" or "Pbft"
+consensus_algorithm = "Raft"
+
+# Replication factor for cluster data
+replication_factor = 3
+
+[crypto]
+# Enable cryptographic operations
+enabled = true
+
+# Key rotation interval in milliseconds (1 hour)
+key_rotation_interval = 3600000
+
+# Cipher suite: "ChaCha20Poly1305" or "Aes256Gcm"
+cipher_suite = "ChaCha20Poly1305"
+
+# Optional paths to TLS certificates
+# certificate_path = "/path/to/cert.pem"
+# private_key_path = "/path/to/key.pem"
+
+[crypto.key_derivation]
+# Key derivation algorithm
+algorithm = "PBKDF2"
+
+# Number of iterations for key derivation
+iterations = 100000
+
+# Salt length for key derivation
+salt_length = 32
+
+[discovery]
+# Service name for discovery
+service_name = "horizon-game-server"
+
+# Discovery interval in milliseconds
+discovery_interval = 10000
+
+# Service TTL in milliseconds
+service_ttl = 30000
+
+# Health check interval in milliseconds
+health_check_interval = 5000
+
+# Discovery backend configuration
+[discovery.backend]
+# Backend type: "Etcd", "Consul", or "Static"
+type = "Static"
+
+# Static server configuration (for testing/development)
+[[discovery.backend.servers]]
+id = "game-server-1"
+address = "127.0.0.1:9001"
+regions = ["region-1", "region-2"]
+
+[[discovery.backend.servers]]
+id = "game-server-2"  
+address = "127.0.0.1:9002"
+regions = ["region-2", "region-3"]
+
+
+[proxy]
+# Buffer size for proxy operations
+buffer_size = 8192
+
+# Maximum concurrent connections to maintain
+max_concurrent_connections = 1000
+
+# Connection pool size per server
+connection_pool_size = 100
+
+# Number of retry attempts for failed requests
+retry_attempts = 3
+
+# Retry delay in milliseconds
+retry_delay = 1000
+
+[proxy.compression]
+# Enable compression
+enabled = true
+
+# Compression algorithm: "Lz4", "Zstd", or "Gzip"
+algorithm = "Lz4"
+
+# Compression level (1-9)
+level = 4
+
+# Minimum size to compress (bytes)
+min_size = 1024
+
+[proxy.rate_limiting]
+# Enable rate limiting
+enabled = true
+
+# Requests per second per client
+requests_per_second = 100
+
+# Burst size for requests
+burst_size = 200
+
+# Rate limiting window size in milliseconds
+window_size = 60000
+
+[routing]
+# Enable session affinity (sticky sessions)
+session_affinity = true
+
+# Distance threshold for region switching
+region_switching_threshold = 10.0
+
+[routing.load_balancing]
+# Load balancing algorithm: 
+# "RoundRobin", "WeightedRoundRobin", "LeastConnections", 
+# "LeastResponseTime", "ConsistentHashing", "Geographic"
+algorithm = "ConsistentHashing"
+
+# Weight factors for load balancing decisions (sum should be 1.0)
+health_check_weight = 0.4
+load_weight = 0.3
+latency_weight = 0.2
+connection_weight = 0.1
+
+[routing.failover]
+# Enable automatic failover
+enabled = true
+
+# Health check timeout in milliseconds
+health_check_timeout = 5000
+
+# Maximum failures before marking server as down
+max_failures = 3
+
+# Backoff multiplier for retry delays
+backoff_multiplier = 2.0
+
+# Recovery check interval in milliseconds
+recovery_check_interval = 30000
+
+[health]
+# Health check interval in milliseconds
+check_interval = 30000
+
+# Health check timeout in milliseconds
+timeout = 5000
+
+# Number of failures before marking as unhealthy
+failure_threshold = 3
+
+# Number of successes before marking as healthy
+success_threshold = 2
+
+# Metrics retention time in milliseconds (1 hour)
+metrics_retention = 3600000
+
+[metrics]
+# Enable metrics collection
+enabled = true
+
+# Metrics server bind address
+bind_address = "0.0.0.0:9090"
+
+# Metrics collection interval in milliseconds
+collection_interval = 5000
+
+# Metrics retention period in milliseconds (24 hours)
+retention_period = 86400000
+
+# Metrics exporters configuration
+# [[metrics.exporters]]
+# type = "Prometheus"
+# endpoint = "http://localhost:9090"
+
+# [[metrics.exporters]]
+# type = "InfluxDb"
+# endpoint = "http://localhost:8086"
+# database = "atlas_metrics"
+
+[regions]
+# Maximum players per region
+max_players_per_region = 1000
+
+# Transition zone size (distance units)
+transition_zone_size = 50.0
+
+[regions.auto_scaling]
+# Enable automatic server scaling
+enabled = true
+
+# Load threshold for scaling up (0.0-1.0)
+scale_up_threshold = 0.8
+
+# Load threshold for scaling down (0.0-1.0) 
+scale_down_threshold = 0.3
+
+# Cooldown period between scaling operations (milliseconds)
+cooldown_period = 300000
+
+# Minimum servers per region
+min_servers_per_region = 1
+
+# Maximum servers per region
+max_servers_per_region = 10
+
+# Region definitions with boundaries
+[regions.region_definitions]
+[regions.region_definitions.region-1]
+min_x = -1000.0
+max_x = 0.0
+min_y = -1000.0
+max_y = 0.0
+min_z = 0.0
+max_z = 100.0
+
+[regions.region_definitions.region-2]
+min_x = 0.0
+max_x = 1000.0
+min_y = -1000.0
+max_y = 0.0
+min_z = 0.0
+max_z = 100.0
+
+[regions.region_definitions.region-3]
+min_x = -1000.0
+max_x = 1000.0
+min_y = 0.0
+max_y = 1000.0
+min_z = 0.0
+max_z = 100.0
