@@ -2,6 +2,7 @@ use crate::config::HealthConfig;
 use crate::discovery::DiscoveryManager;
 use crate::errors::{AtlasError, Result};
 use crate::types::{ServerId, HealthReport, NodeStatus, GameServer};
+use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc, Duration as ChronoDuration};
 use dashmap::DashMap;
 use parking_lot::RwLock;

@@ -6,6 +6,7 @@ use crate::types::{
     GameServer, ServerStatus, LoadBalancingMetrics, ClientConnection, Region
 };
 use async_trait::async_trait;
+use serde::{Serialize, Deserialize};
 use chrono::Utc;
 use dashmap::DashMap;
 use parking_lot::RwLock;
