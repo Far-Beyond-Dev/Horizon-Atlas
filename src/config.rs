@@ -272,6 +272,7 @@ impl Config {
                 connection_pool_size: 100,
                 retry_attempts: 3,
                 retry_delay: 1000,
+                connection_timeout: 30000,
                 compression: CompressionConfig {
                     enabled: true,
                     algorithm: CompressionAlgorithm::Lz4,
