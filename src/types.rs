@@ -132,7 +132,7 @@ impl RegionBounds {
 pub struct GameServer {
     pub id: ServerId,
     pub address: SocketAddr,
-    pub regions: Vec<RegionId>,
+    pub gameworld_bounds: RegionBounds,
     pub status: ServerStatus,
     pub load: f32,
     pub max_capacity: u32,
