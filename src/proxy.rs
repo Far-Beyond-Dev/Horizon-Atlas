@@ -2,6 +2,7 @@ use crate::config::ProxyConfig;
 use crate::errors::{AtlasError, Result};
 use crate::types::{ClientId, ServerId, Message, MessageSource, MessageDestination, ClientConnection};
 use crate::crypto::CryptoManager;
+use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
 use chrono::Utc;
 use dashmap::DashMap;
