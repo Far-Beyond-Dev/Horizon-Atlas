@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 use crate::error::{ProxyError, Result};
+use crate::spatial::{ServerRegion, RegionCoordinate, WorldCoordinate};
 
 /// Server configuration with load balancing information
 #[derive(Debug, Clone)]
@@ -50,21 +51,43 @@ impl ServerConfig {
 pub struct ProxyConfig {
     /// Address to listen on
     pub listen_addr: SocketAddr,
-    /// Available backend servers
+    /// Available backend servers with spatial regions
     pub servers: Vec<ServerConfig>,
+    /// Server regions for spatial routing
+    pub regions: Vec<ServerRegion>,
     /// Buffer size for data transfers
     pub buffer_size: usize,
     /// Maximum concurrent connections
     pub max_connections: u32,
-    /// Load balancing algorithm
-    pub load_balance_algorithm: LoadBalanceAlgorithm,
+    /// Spatial routing settings
+    pub spatial_config: SpatialConfig,
 }
 
+/// Spatial routing configuration
 #[derive(Debug)]
-pub enum LoadBalanceAlgorithm {
-    RoundRobin,
-    LeastConnections,
-    Random,
+pub struct SpatialConfig {
+    /// Default region size (bounds radius in world units)
+    pub default_region_size: f64,
+    /// Transfer prediction time (seconds ahead to predict)
+    pub prediction_time: f64,
+    /// Boundary approach threshold for early transfer (world units)
+    pub boundary_threshold: f64,
+    /// Player position update file
+    pub player_data_file: String,
+    /// Auto-save interval for player data (seconds)
+    pub auto_save_interval: u64,
+}
+
+impl Default for SpatialConfig {
+    fn default() -> Self {
+        Self {
+            default_region_size: 1000.0, // 1000 unit radius per region
+            prediction_time: 5.0, // Predict 5 seconds ahead
+            boundary_threshold: 100.0, // Start transfer when 100 units from boundary
+            player_data_file: "player_positions.json".to_string(),
+            auto_save_interval: 30, // Save every 30 seconds
+        }
+    }
 }
 
 impl Default for ProxyConfig {
