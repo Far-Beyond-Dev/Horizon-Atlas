@@ -92,15 +92,43 @@ impl Default for SpatialConfig {
 
 impl Default for ProxyConfig {
     fn default() -> Self {
+        let servers = vec![
+            ServerConfig::new("127.0.0.1:8080".parse().unwrap(), "game-server-1".to_string()),
+            ServerConfig::new("127.0.0.1:8081".parse().unwrap(), "game-server-2".to_string()),
+            ServerConfig::new("127.0.0.1:8082".parse().unwrap(), "game-server-3".to_string()),
+        ];
+        
+        // Create default spatial regions in a 3x3 grid around center (0,0,0)
+        let regions = vec![
+            // Center region
+            ServerRegion::new(
+                "game-server-1".to_string(),
+                RegionCoordinate::new(0, 0, 0),
+                WorldCoordinate::new(0.0, 0.0, 0.0),
+                1000.0
+            ),
+            // Adjacent regions
+            ServerRegion::new(
+                "game-server-2".to_string(),
+                RegionCoordinate::new(1, 0, 0),
+                WorldCoordinate::new(2000.0, 0.0, 0.0),
+                1000.0
+            ),
+            ServerRegion::new(
+                "game-server-3".to_string(),
+                RegionCoordinate::new(-1, 0, 0),
+                WorldCoordinate::new(-2000.0, 0.0, 0.0),
+                1000.0
+            ),
+        ];
+        
         Self {
             listen_addr: "0.0.0.0:9000".parse().unwrap(),
-            servers: vec![
-                ServerConfig::new("127.0.0.1:8080".parse().unwrap(), "server-1".to_string()),
-                ServerConfig::new("127.0.0.1:8081".parse().unwrap(), "server-2".to_string()),
-            ],
+            servers,
+            regions,
             buffer_size: 4096,
             max_connections: 10000,
-            load_balance_algorithm: LoadBalanceAlgorithm::LeastConnections,
+            spatial_config: SpatialConfig::default(),
         }
     }
 }
