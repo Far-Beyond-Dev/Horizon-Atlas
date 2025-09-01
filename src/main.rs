@@ -57,15 +57,6 @@ fn main() -> Result<()> {
     // Create and start the proxy
     let proxy = HorizonProxy::new(config)?;
     
-    println!("✅ Horizon Atlas Proxy initialized successfully!");
-    println!("🔍 Features enabled:");
-    println!("   ✓ Multi-server load balancing");
-    println!("   ✓ Automatic client transfers");
-    println!("   ✓ Real-time data skimming");
-    println!("   ✓ Health monitoring");
-    println!("   ✓ Production error handling");
-    println!();
-    
     // Start the proxy (this blocks)
     proxy.start()?;
     

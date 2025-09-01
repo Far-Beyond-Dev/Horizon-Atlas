@@ -27,9 +27,9 @@ Atlas operates as a clustered service sitting in front of your game server infra
 
 ```
 Clients → Atlas Proxy → Game Server Cluster
-                    ├── game-server-1 (capacity: 1000)
-                    ├── game-server-2 (capacity: 1000) 
-                    └── game-server-3 (capacity: 1000)
+               ├── game-server-1 (capacity: 1000)
+               ├── game-server-2 (capacity: 1000) 
+               └── game-server-3 (capacity: 1000)
 ```
 
 ### Modular Design
