@@ -5,3 +5,5 @@ pub mod transfer;
 pub mod skim;
 pub mod config;
 pub mod error;
+pub mod spatial;
+pub mod persistence;
