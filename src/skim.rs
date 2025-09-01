@@ -128,8 +128,7 @@ impl DataSkimmer {
             println!("[GAME] Error detected for client {}: {}", client_id, text);
         }
     }
-}
-
+    
     /// Process JSON message for position tracking and game events
     fn process_json_message(json: &Value, client_id: &str, direction: &DataDirection, persistence: &PlayerPersistence) {
         match direction {

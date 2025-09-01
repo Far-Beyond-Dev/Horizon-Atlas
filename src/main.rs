@@ -49,7 +49,9 @@ fn main() -> Result<()> {
     }
     println!("   Buffer Size: {} bytes", config.buffer_size);
     println!("   Max Connections: {}", config.max_connections);
-    println!("   Load Balancing: {:?}", config.load_balance_algorithm);
+    println!("   Spatial Routing: Region size {}, Prediction time {}s", 
+             config.spatial_config.default_region_size, 
+             config.spatial_config.prediction_time);
     println!();
     
     // Create and start the proxy

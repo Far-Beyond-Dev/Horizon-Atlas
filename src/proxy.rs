@@ -10,6 +10,8 @@ use crate::transfer::TransferManager;
 use crate::skim::{DataSkimmer, DataDirection};
 use crate::config::ProxyConfig;
 use crate::error::{ProxyError, Result};
+use crate::persistence::{PlayerPersistence, PlayerData};
+use crate::spatial::WorldCoordinate;
 
 /// Main proxy server that handles client connections and server transfers
 pub struct HorizonProxy {
@@ -17,6 +19,7 @@ pub struct HorizonProxy {
     server_manager: Arc<ServerManager>,
     transfer_manager: Arc<TransferManager>,
     data_skimmer: Arc<DataSkimmer>,
+    player_persistence: Arc<PlayerPersistence>,
     active_connections: Arc<Mutex<HashMap<String, Arc<ClientConnection>>>>,
 }
 
@@ -25,7 +28,14 @@ impl HorizonProxy {
     pub fn new(config: ProxyConfig) -> Result<Self> {
         let server_manager = Arc::new(ServerManager::new(config.servers.clone()));
         let transfer_manager = Arc::new(TransferManager::new(server_manager.clone()));
-        let data_skimmer = Arc::new(DataSkimmer::new()?);
+        
+        // Initialize player persistence
+        let player_persistence = Arc::new(PlayerPersistence::new(
+            &config.spatial_config.player_data_file,
+            config.spatial_config.auto_save_interval,
+        )?);
+        
+        let data_skimmer = Arc::new(DataSkimmer::new(player_persistence.clone())?);
         let active_connections = Arc::new(Mutex::new(HashMap::new()));
         
         Ok(Self {
@@ -33,6 +43,7 @@ impl HorizonProxy {
             server_manager,
             transfer_manager,
             data_skimmer,
+            player_persistence,
             active_connections,
         })
     }
@@ -57,6 +68,9 @@ impl HorizonProxy {
                     let active_connections = self.active_connections.clone();
                     let buffer_size = self.config.buffer_size;
                     
+                    let config_clone = self.config.clone();
+                    let player_persistence_clone = self.player_persistence.clone();
+                    
                     thread::spawn(move || {
                         if let Err(e) = Self::handle_client(
                             client_stream,
@@ -65,6 +79,8 @@ impl HorizonProxy {
                             data_skimmer,
                             active_connections,
                             buffer_size,
+                            config_clone,
+                            player_persistence_clone,
                         ) {
                             println!("[ERROR] Client handling failed: {}", e);
                         }
@@ -87,10 +103,15 @@ impl HorizonProxy {
         data_skimmer: Arc<DataSkimmer>,
         active_connections: Arc<Mutex<HashMap<String, Arc<ClientConnection>>>>,
         buffer_size: usize,
+        config: ProxyConfig,
+        player_persistence: Arc<PlayerPersistence>,
     ) -> Result<()> {
-        // Find the best server for this client
-        let server_config = server_manager.get_best_server()
-            .ok_or_else(|| ProxyError::Connection("No available servers".to_string()))?;
+        // Use spatial routing to find the best server for this client
+        let server_config = Self::find_server_for_client(
+            &client_stream,
+            &config,
+            &player_persistence,
+        )?;
             
         // Create client connection wrapper
         let client = Arc::new(ClientConnection::new(client_stream, server_config.id.clone())?);
@@ -301,6 +322,52 @@ impl HorizonProxy {
                 }
             }
         });
+    }
+    
+    /// Find the best server for a new client connection using spatial routing
+    fn find_server_for_client(
+        client_stream: &TcpStream,
+        config: &ProxyConfig,
+        player_persistence: &PlayerPersistence,
+    ) -> Result<crate::config::ServerConfig> {
+        // Get client address to create a unique identifier
+        let client_addr = client_stream.peer_addr()?;
+        let client_id = format!("temp-{}-{}", client_addr.ip(), client_addr.port());
+        
+        // Check if we have existing player data
+        if let Some(player_data) = player_persistence.get_player(&client_id) {
+            // Use spatial routing based on last known position
+            if let Some(region) = config.find_region_for_position(&player_data.last_position) {
+                if let Some(server) = config.get_server_by_id(&region.server_id) {
+                    println!("[SPATIAL] Client {} returning to region {} at position ({:.1}, {:.1}, {:.1})", 
+                            client_id, region.server_id, 
+                            player_data.last_position.x, 
+                            player_data.last_position.y, 
+                            player_data.last_position.z);
+                    return Ok(server.clone());
+                }
+            }
+        }
+        
+        // No existing data - assign to the center region (spawn point)
+        let spawn_position = WorldCoordinate::new(0.0, 0.0, 0.0);
+        if let Some(region) = config.find_region_for_position(&spawn_position) {
+            if let Some(server) = config.get_server_by_id(&region.server_id) {
+                // Create new player data
+                let new_player = PlayerData::new(client_id.clone(), spawn_position, region.server_id.clone());
+                player_persistence.update_player(new_player);
+                
+                println!("[SPATIAL] New client {} assigned to spawn region {} at center", 
+                        client_id, region.server_id);
+                return Ok(server.clone());
+            }
+        }
+        
+        // Fallback to first available server
+        config.servers.iter()
+            .find(|s| s.can_accept_connections())
+            .cloned()
+            .ok_or_else(|| ProxyError::Connection("No available servers".to_string()))
     }
     
     /// Get current proxy statistics

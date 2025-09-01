@@ -155,10 +155,11 @@ Non-blocking traffic analysis for detecting movement patterns and game events.
 
 ## 🔧 Configuration Options
 
-### Load Balancing Algorithms
-- **Least Connections** - Route to server with fewest active connections (default)
-- **Round Robin** - Cycle through servers sequentially  
-- **Random** - Distribute connections randomly
+### Spatial Routing System
+- **Position-Based Routing** - Route clients to servers based on their world coordinates
+- **Region Management** - Servers manage specific 3D regions of the game world
+- **Predictive Transfers** - Move clients to new servers before they cross region boundaries
+- **Movement Tracking** - Monitor player velocity and trajectory for intelligent transfers
 
 ### Server Settings
 - **Buffer Size** - Data transfer buffer size (default: 4096 bytes)

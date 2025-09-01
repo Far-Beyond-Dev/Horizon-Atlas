@@ -47,7 +47,7 @@ impl ServerConfig {
 }
 
 /// Proxy configuration
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProxyConfig {
     /// Address to listen on
     pub listen_addr: SocketAddr,
@@ -64,7 +64,7 @@ pub struct ProxyConfig {
 }
 
 /// Spatial routing configuration
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SpatialConfig {
     /// Default region size (bounds radius in world units)
     pub default_region_size: f64,
@@ -134,61 +134,117 @@ impl Default for ProxyConfig {
 }
 
 impl ProxyConfig {
-    /// Create a new proxy configuration
+    /// Create a new proxy configuration with spatial regions
     pub fn new(listen_addr: &str, servers: Vec<(&str, &str)>) -> Result<Self> {
         let listen_addr = listen_addr.parse()?;
         let mut server_configs = Vec::new();
+        let mut regions = Vec::new();
         
-        for (addr_str, id) in servers {
-            let addr = addr_str.parse()?;
-            server_configs.push(ServerConfig::new(addr, id.to_string()));
+        if servers.is_empty() {
+            return Err(ProxyError::Config("At least one server must be configured".to_string()));
         }
         
-        if server_configs.is_empty() {
-            return Err(ProxyError::Config("At least one server must be configured".to_string()));
+        // Create server configs and default spatial regions
+        for (i, (addr_str, id)) in servers.iter().enumerate() {
+            let addr = addr_str.parse()?;
+            server_configs.push(ServerConfig::new(addr, id.to_string()));
+            
+            // Create regions in a linear arrangement for now
+            // In production, this would be configured via file or database
+            let region_coord = RegionCoordinate::new(i as i64, 0, 0);
+            let center_x = (i as f64) * 2000.0; // 2000 units apart
+            let center = WorldCoordinate::new(center_x, 0.0, 0.0);
+            
+            regions.push(ServerRegion::new(
+                id.to_string(),
+                region_coord,
+                center,
+                1000.0 // 1000 unit radius
+            ));
         }
         
         Ok(Self {
             listen_addr,
             servers: server_configs,
+            regions,
             buffer_size: 4096,
             max_connections: 10000,
-            load_balance_algorithm: LoadBalanceAlgorithm::LeastConnections,
+            spatial_config: SpatialConfig::default(),
         })
     }
     
-    /// Get the best available server based on load balancing algorithm
-    pub fn get_best_server(&self) -> Option<&ServerConfig> {
-        let available_servers: Vec<&ServerConfig> = self.servers
-            .iter()
-            .filter(|s| s.can_accept_connections())
-            .collect();
-            
-        if available_servers.is_empty() {
-            return None;
+    /// Find the best server region for a given world position
+    pub fn find_region_for_position(&self, position: &WorldCoordinate) -> Option<&ServerRegion> {
+        // First, find regions that contain the position
+        for region in &self.regions {
+            if region.contains_point(position) {
+                return Some(region);
+            }
         }
         
-        match self.load_balance_algorithm {
-            LoadBalanceAlgorithm::LeastConnections => {
-                available_servers
-                    .iter()
-                    .min_by_key(|s| s.active_connections)
-                    .copied()
-            }
-            LoadBalanceAlgorithm::RoundRobin => {
-                // Simple implementation - in production, you'd track the last used server
-                available_servers.first().copied()
-            }
-            LoadBalanceAlgorithm::Random => {
-                use std::collections::hash_map::DefaultHasher;
-                use std::hash::{Hash, Hasher};
-                
-                let mut hasher = DefaultHasher::new();
-                std::thread::current().id().hash(&mut hasher);
-                let hash = hasher.finish();
-                let index = (hash as usize) % available_servers.len();
-                available_servers.get(index).copied()
+        // If no region contains the position, find the closest one
+        self.regions
+            .iter()
+            .min_by(|a, b| {
+                let dist_a = a.center.distance_to(position);
+                let dist_b = b.center.distance_to(position);
+                dist_a.partial_cmp(&dist_b).unwrap_or(std::cmp::Ordering::Equal)
+            })
+    }
+    
+    /// Get server by ID
+    pub fn get_server_by_id(&self, server_id: &str) -> Option<&ServerConfig> {
+        self.servers.iter().find(|s| s.id == server_id)
+    }
+    
+    /// Get region by server ID
+    pub fn get_region_by_server_id(&self, server_id: &str) -> Option<&ServerRegion> {
+        self.regions.iter().find(|r| r.server_id == server_id)
+    }
+    
+    /// Find regions that a player is approaching
+    pub fn find_approaching_regions(&self, position: &WorldCoordinate, velocity: &WorldCoordinate) -> Vec<&ServerRegion> {
+        let prediction_time = self.spatial_config.prediction_time;
+        let threshold = self.spatial_config.boundary_threshold;
+        
+        // Predict future position
+        let predicted_pos = WorldCoordinate::new(
+            position.x + velocity.x * prediction_time,
+            position.y + velocity.y * prediction_time,
+            position.z + velocity.z * prediction_time,
+        );
+        
+        // Find regions that the player is approaching
+        self.regions
+            .iter()
+            .filter(|region| {
+                // Check if predicted position is within threshold of region boundary
+                region.distance_to_boundary(&predicted_pos) <= threshold
+            })
+            .collect()
+    }
+    
+    /// Check if a position is near any region boundary
+    pub fn is_near_boundary(&self, position: &WorldCoordinate) -> Option<(&ServerRegion, f64)> {
+        let threshold = self.spatial_config.boundary_threshold;
+        
+        for region in &self.regions {
+            let distance = region.distance_to_boundary(position);
+            if distance <= threshold {
+                return Some((region, distance));
             }
         }
+        
+        None
+    }
+    
+    /// Get all adjacent regions to a given region
+    pub fn get_adjacent_regions(&self, region_coord: &RegionCoordinate) -> Vec<&ServerRegion> {
+        let adjacent_coords = region_coord.adjacent_regions();
+        
+        self.regions
+            .iter()
+            .filter(|r| adjacent_coords.contains(&r.region_coord))
+            .collect()
     }
 }
