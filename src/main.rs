@@ -1,108 +1,71 @@
-use socket2::{Socket, Domain, Type, Protocol};
-use std::net::{SocketAddr, TcpStream};
-use std::io::{Read, Write};
-use std::thread;
+//! # Horizon Atlas - Production-Ready WebSocket Proxy
+//!
+//! A high-performance, multi-server TCP proxy with advanced features:
+//! - Load balancing across multiple backend servers
+//! - Automatic client transfers between servers
+//! - Real-time data skimming and analysis
+//! - Health monitoring and failover
+//! - Production-ready error handling and logging
+//!
+//! ## Features
+//!
+//! - **Multi-Server Support**: Configure multiple backend servers with automatic load balancing
+//! - **Client Transfers**: Seamlessly move clients between servers for load balancing or maintenance
+//! - **Data Skimming**: Non-blocking analysis of traffic for monitoring and debugging
+//! - **Health Checks**: Automatic monitoring of server health with failover capabilities
+//! - **Production Ready**: Comprehensive error handling, logging, and monitoring
+//!
+//! ## Usage
+//!
+//! ```bash
+//! cargo run
+//! ```
+//!
+//! The proxy will start listening on `0.0.0.0:9000` and forward traffic to configured backend servers.
 
-// Minimal, robust TCP passthrough WebSocket proxy
-fn handle_client(mut client: TcpStream, target_addr: SocketAddr) {
-    // --- Handshake with client ---
-    let mut buf = [0u8; 4096];
-    let n = match client.read(&mut buf) {
-        Ok(n) => n,
-        Err(_) => return,
-    };
-    // --- Connect to target server ---
-    let mut server = match TcpStream::connect(target_addr) {
-        Ok(s) => s,
-        Err(_) => return,
-    };
-    // --- Forward client's handshake to target server ---
-    if server.write_all(&buf[..n]).is_err() {
-        return;
-    }
-    // --- Read handshake response from target server ---
-    let mut server_handshake_buf = [0u8; 4096];
-    let server_handshake_n = match server.read(&mut server_handshake_buf) {
-        Ok(n) => n,
-        Err(_) => return,
-    };
-    if server_handshake_n == 0 {
-        return;
-    }
-    // --- Forward handshake response to client ---
-    if client.write_all(&server_handshake_buf[..server_handshake_n]).is_err() {
-        return;
-    }
-    // --- Raw bidirectional TCP passthrough ---
-    let mut client_for_server = match client.try_clone() {
-        Ok(c) => c,
-        Err(_) => return,
-    };
-    let mut server_for_client = match server.try_clone() {
-        Ok(s) => s,
-        Err(_) => return,
-    };
-    let c2s = thread::spawn(move || {
-        let mut buf = [0u8; 4096];
-        loop {
-            match client.read(&mut buf) {
-                Ok(0) => break,
-                Ok(n) => {
-                    // Skim buffer for JSON messages with client:move
-                    let data = &buf[..n];
-                    if let Ok(text) = std::str::from_utf8(data) {
-                        for part in text.split(|c| c == '\n' || c == '\r') {
-                            if part.contains("\"client\":\"move\"") {
-                                println!("client:move detected: {}", part);
-                            }
-                        }
-                    }
+use horizon_atlas::config::ProxyConfig;
+use horizon_atlas::proxy::HorizonProxy;
+use horizon_atlas::error::Result;
 
-                    // Immediate passthrough
-                    if server.write_all(data).is_err() {
-                        break;
-                    }
-                },
-                Err(_) => break,
-            }
-        }
-    });
-    let s2c = thread::spawn(move || {
-        let mut buf = [0u8; 4096];
-        loop {
-            match server_for_client.read(&mut buf) {
-                Ok(0) => {
-                    // Server disconnected, shutdown client socket
-                    let _ = client_for_server.shutdown(std::net::Shutdown::Both);
-                    break;
-                },
-                Ok(n) => {
-                    if client_for_server.write_all(&buf[..n]).is_err() {
-                        break;
-                    }
-                },
-                Err(_) => break,
-            }
-        }
-    });
-    let _ = c2s.join();
-    let _ = s2c.join();
-}
-
-fn main() {
-    let listen_addr: SocketAddr = "0.0.0.0:9000".parse().unwrap();
-    let target_addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
-    let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP)).unwrap();
-    socket.set_reuse_address(true).unwrap();
-    socket.bind(&listen_addr.into()).unwrap();
-    socket.listen(128).unwrap();
-    println!("Proxy listening on {}", listen_addr);
-    loop {
-        let (client, _) = socket.accept().unwrap();
-        let client = client.into();
-        let target_addr = target_addr.clone();
-        thread::spawn(move || {
-            handle_client(client, target_addr);
-        });
+fn main() -> Result<()> {
+    println!("🚀 Starting Horizon Atlas Proxy...");
+    
+    // Create proxy configuration
+    // In production, this would be loaded from a config file or environment variables
+    let config = ProxyConfig::new(
+        "0.0.0.0:9000",
+        vec![
+            ("127.0.0.1:8080", "game-server-1"),
+            ("127.0.0.1:8081", "game-server-2"),
+            ("127.0.0.1:8082", "game-server-3"),
+        ],
+    )?;
+    
+    println!("📋 Configuration:");
+    println!("   Listen Address: {}", config.listen_addr);
+    println!("   Backend Servers: {}", config.servers.len());
+    for server in &config.servers {
+        println!("     - {} ({})", server.id, server.addr);
     }
+    println!("   Buffer Size: {} bytes", config.buffer_size);
+    println!("   Max Connections: {}", config.max_connections);
+    println!("   Load Balancing: {:?}", config.load_balance_algorithm);
+    println!();
+    
+    // Create and start the proxy
+    let proxy = HorizonProxy::new(config)?;
+    
+    println!("✅ Horizon Atlas Proxy initialized successfully!");
+    println!("🔍 Features enabled:");
+    println!("   ✓ Multi-server load balancing");
+    println!("   ✓ Automatic client transfers");
+    println!("   ✓ Real-time data skimming");
+    println!("   ✓ Health monitoring");
+    println!("   ✓ Production error handling");
+    println!();
+    
+    // Start the proxy (this blocks)
+    proxy.start()?;
+    
+    Ok(())
 }
