@@ -19,3 +19,4 @@ Cargo.lock
 /target
 *.git-credentials-tempgithub
 player_positions.json
+*.json
