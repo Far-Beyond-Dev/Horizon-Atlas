@@ -82,6 +82,7 @@ impl ServerManager {
         }
         
         // Use least connections algorithm
+        // TODO: This is wrong. We need to find what server is next to us in 3d space This will use `HashMap<(f64, f64, f64), NodeData>`
         available_servers
             .iter()
             .min_by_key(|s| s.active_connections)
