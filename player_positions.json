@@ -1,9 +1,49 @@
 {
-  "players": {},
+  "players": {
+    "temp-127.0.0.1-58482": {
+      "player_id": "temp-127.0.0.1-58482",
+      "last_position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "movement_data": {
+        "position": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "previous_position": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "velocity": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "timestamp": 1756753577329,
+        "position_history": [
+          [
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            1756753577329
+          ]
+        ]
+      },
+      "last_server": "game-server-1",
+      "last_updated": 1756753577329,
+      "session_data": {}
+    }
+  },
   "metadata": {
     "version": "1.0.0",
-    "last_saved": 1756751780917,
-    "player_count": 0,
+    "last_saved": 1756753896643,
+    "player_count": 1,
     "created": 1756751750915
   }
 }

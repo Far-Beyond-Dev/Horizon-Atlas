@@ -1,6 +1,5 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
-use crate::error::{ProxyError, Result};
 
 /// 3D world coordinates using f64 for precision
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

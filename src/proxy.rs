@@ -26,7 +26,7 @@ pub struct HorizonProxy {
 impl HorizonProxy {
     /// Create a new Horizon Atlas proxy
     pub fn new(config: ProxyConfig) -> Result<Self> {
-        let server_manager = Arc::new(ServerManager::new(config.servers.clone()));
+        let server_manager = Arc::new(ServerManager::new(config.clone()));
         let transfer_manager = Arc::new(TransferManager::new(server_manager.clone()));
         
         // Initialize player persistence

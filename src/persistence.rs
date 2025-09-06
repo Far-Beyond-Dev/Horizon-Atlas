@@ -1,5 +1,5 @@
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Write, BufReader, BufWriter};
+use std::io::{BufReader, BufWriter};
 use std::path::Path;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -141,7 +141,7 @@ pub struct PlayerPersistence {
 impl PlayerPersistence {
     /// Create a new player persistence manager
     pub fn new(file_path: &str, auto_save_interval: u64) -> Result<Self> {
-        let mut persistence = Self {
+        let persistence = Self {
             file_path: file_path.to_string(),
             cache: Arc::new(Mutex::new(PlayerDatabase::new())),
             auto_save_interval,
